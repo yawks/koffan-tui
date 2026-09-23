@@ -353,9 +353,7 @@ func (m model) updateForm(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "tab":
-			if f.match >= 0 && f.match < len(f.matches) {
-				f.name.SetValue(f.matches[f.match])
-			}
+			f.acceptMatch()
 			f.field = 1
 			f.name.Blur()
 			return m, f.quantity.Focus()
@@ -373,9 +371,7 @@ func (m model) updateForm(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if key.String() == "enter" {
 		if f.kind == formItem && f.field == 0 {
-			if f.match >= 0 && f.match < len(f.matches) {
-				f.name.SetValue(f.matches[f.match])
-			}
+			f.acceptMatch()
 			f.field = 1
 			f.name.Blur()
 			return m, f.quantity.Focus()
@@ -439,6 +435,13 @@ func (m model) updateForm(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.updateMatches()
 	}
 	return m, cmd
+}
+
+func (f *itemForm) acceptMatch() {
+	if f.match >= 0 && f.match < len(f.matches) {
+		f.name.SetValue(f.matches[f.match])
+		f.section = f.matchSections[f.match]
+	}
 }
 
 func (m model) updateConfirm(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {

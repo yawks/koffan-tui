@@ -37,6 +37,7 @@ type itemForm struct {
 	name              textinput.Model
 	quantity          textinput.Model
 	matches           []string
+	matchSections     []int
 	match             int
 }
 
@@ -267,13 +268,15 @@ func (m *model) updateMatches() {
 	needle := strings.ToLower(strings.TrimSpace(m.form.name.Value()))
 	seen := make(map[string]bool)
 	m.form.matches = nil
+	m.form.matchSections = nil
 	if needle != "" {
-		for _, section := range m.sections {
+		for sectionIndex, section := range m.sections {
 			for _, item := range section.Items {
 				key := strings.ToLower(item.Name)
 				if strings.Contains(key, needle) && !seen[key] {
 					seen[key] = true
 					m.form.matches = append(m.form.matches, item.Name)
+					m.form.matchSections = append(m.form.matchSections, sectionIndex)
 				}
 			}
 		}

@@ -120,3 +120,23 @@ func TestToggleAllSections(t *testing.T) {
 		t.Fatalf("toutes les sections auraient dû être repliées: %#v", m.expanded)
 	}
 }
+
+func TestAutocompleteSelectsItemSection(t *testing.T) {
+	m := model{
+		sections: []Section{
+			{ID: 1, Name: "Fruits"},
+			{ID: 2, Name: "Épicerie", Items: []Item{{Name: "Pâtes"}}},
+		},
+		expanded: make(map[int]bool),
+		focus:    focusContent,
+	}
+	m.openForm(formItem, 1)
+	m.form.name.SetValue("Pât")
+	m.updateMatches()
+
+	updated, _ := m.updateForm(tea.KeyPressMsg{Code: tea.KeyEnter})
+	got := updated.(model)
+	if got.form.name.Value() != "Pâtes" || got.form.section != 1 {
+		t.Fatalf("suggestion = %q, section = %d", got.form.name.Value(), got.form.section)
+	}
+}
