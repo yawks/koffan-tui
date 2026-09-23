@@ -112,7 +112,7 @@ func (m model) renderContent() string {
 		}
 	}
 	header := []string{
-		listTitleStyle.Width(titleWidth).Render(fmt.Sprintf("%s %s   %d/%d à acheter", list.Icon, list.Name, total-completed, total)),
+		listTitleStyle.Width(titleWidth).Render(fmt.Sprintf("%s %s   %d/%d to buy", list.Icon, list.Name, total-completed, total)),
 		"",
 		buttonStyle.Render("[s] + Section    [a] + Article"),
 		"",
@@ -169,9 +169,9 @@ func (m model) renderSection(index int) []string {
 	if !m.showCompleted {
 		columnWidth = max(18, width-36)
 	}
-	leftTitle := lipgloss.NewStyle().Bold(true).Width(columnWidth).Render("À acheter")
+	leftTitle := lipgloss.NewStyle().Bold(true).Width(columnWidth).Render("To buy")
 	if m.showCompleted {
-		rightTitle := lipgloss.NewStyle().Bold(true).Width(columnWidth).Render("Terminés")
+		rightTitle := lipgloss.NewStyle().Bold(true).Width(columnWidth).Render("Completed")
 		lines = append(lines, "  "+leftTitle+"│ "+rightTitle)
 	} else {
 		lines = append(lines, "  "+leftTitle)
@@ -225,11 +225,11 @@ func renderItemCell(items []Item, row, width int, active, completed bool) string
 
 func (m model) renderForm() string {
 	f := m.form
-	title := map[formKind]string{formList: "Nouvelle liste", formSection: "Nouvelle section", formItem: "Nouvel article"}[f.kind]
+	title := map[formKind]string{formList: "New list", formSection: "New section", formItem: "New item"}[f.kind]
 	if f.editing {
-		title = map[formKind]string{formList: "Modifier la liste", formSection: "Modifier la section", formItem: "Modifier l’article"}[f.kind]
+		title = map[formKind]string{formList: "Edit list", formSection: "Edit section", formItem: "Edit item"}[f.kind]
 	}
-	lines := []string{titleStyle.Render(title), "", "Nom", f.name.View()}
+	lines := []string{titleStyle.Render(title), "", "Name", f.name.View()}
 	if f.kind == formItem {
 		for i, match := range f.matches {
 			line := "  " + match
@@ -241,7 +241,7 @@ func (m model) renderForm() string {
 				break
 			}
 		}
-		lines = append(lines, "", "Quantité", f.quantity.View())
+		lines = append(lines, "", "Quantity", f.quantity.View())
 		if len(m.sections) > 0 {
 			section := m.sections[f.section].Name
 			line := "Section    ◀ " + section + " ▶"
@@ -254,7 +254,7 @@ func (m model) renderForm() string {
 	if m.err != nil {
 		lines = append(lines, "", errorStyle.Render(m.err.Error()))
 	}
-	lines = append(lines, "", lipgloss.NewStyle().Foreground(muted).Render("Entrée valider · Échap annuler"))
+	lines = append(lines, "", lipgloss.NewStyle().Foreground(muted).Render("Enter to validate · Esc to cancel"))
 	return panelStyle.BorderForeground(accent).Width(46).Render(strings.Join(lines, "\n"))
 }
 
@@ -262,11 +262,11 @@ func (m model) renderConfirm() string {
 	c := m.confirm
 	var message string
 	if c.kind == "sections" && c.count > 0 {
-		message = errorStyle.Render("⚠ ATTENTION") + fmt.Sprintf("\n\nLa section « %s » contient %d article(s).\nTous ses articles seront également supprimés.", c.name, c.count)
+		message = errorStyle.Render("⚠ ATTENTION") + fmt.Sprintf("\n\nThe section « %s » contains %d article(s).\nAll its articles will also be deleted.", c.name, c.count)
 	} else if c.kind == "lists" && c.count > 0 {
-		message = errorStyle.Render("⚠ ATTENTION") + fmt.Sprintf("\n\nSupprimer « %s » et ses %d article(s) ?", c.name, c.count)
+		message = errorStyle.Render("⚠ ATTENTION") + fmt.Sprintf("\n\nDelete « %s » and its %d article(s) ?", c.name, c.count)
 	} else {
-		message = fmt.Sprintf("Supprimer « %s » ?", c.name)
+		message = fmt.Sprintf("Delete « %s » ?", c.name)
 	}
 	message += "\n\n" + errorStyle.Render("[o/entrée] Supprimer") + "   [n/échap] Annuler"
 	return panelStyle.BorderForeground(danger).Width(58).Render(message)

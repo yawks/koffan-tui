@@ -8,7 +8,7 @@ import (
 
 func TestBackspaceDeletesCompletedItem(t *testing.T) {
 	m := model{
-		sections:      []Section{{ID: 10, Items: []Item{{ID: 2, Name: "Bananes", Completed: true}}}},
+		sections:      []Section{{ID: 10, Items: []Item{{ID: 2, Name: "Bananas", Completed: true}}}},
 		expanded:      map[int]bool{10: true},
 		focus:         focusContent,
 		row:           0,
@@ -28,8 +28,8 @@ func TestFollowItemAfterCompletedColumnChange(t *testing.T) {
 		sections: []Section{{
 			ID: 10,
 			Items: []Item{
-				{ID: 1, Name: "Pommes", Completed: false},
-				{ID: 2, Name: "Bananes", Completed: true},
+				{ID: 1, Name: "Apples", Completed: false},
+				{ID: 2, Name: "Bananas", Completed: true},
 			},
 		}},
 		expanded: make(map[int]bool),
