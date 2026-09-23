@@ -2,6 +2,8 @@
 
 Terminal interface for the [Koffan REST API](https://github.com/PanSalut/Koffan/wiki/REST-API).
 
+This project was vibe-coded.
+
 ## Run
 
 ```sh

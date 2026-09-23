@@ -1,6 +1,27 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
+)
+
+func TestBackspaceDeletesCompletedItem(t *testing.T) {
+	m := model{
+		sections:      []Section{{ID: 10, Items: []Item{{ID: 2, Name: "Bananes", Completed: true}}}},
+		expanded:      map[int]bool{10: true},
+		focus:         focusContent,
+		row:           0,
+		column:        1,
+		showCompleted: true,
+	}
+
+	updated, _ := m.updateContent(tea.KeyPressMsg{Code: tea.KeyBackspace, Mod: tea.ModShift})
+	got := updated.(model)
+	if got.confirm == nil || got.confirm.kind != "items" || got.confirm.id != 2 {
+		t.Fatalf("confirmation inattendue: %#v", got.confirm)
+	}
+}
 
 func TestFollowItemAfterCompletedColumnChange(t *testing.T) {
 	m := model{

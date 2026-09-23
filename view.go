@@ -289,9 +289,9 @@ func helpKey(key, label string) string {
 
 func renderHelp(width int) string {
 	entries := [][2]string{
-		{"tab", "panneau"}, {"↑↓", "naviguer"}, {"←→", "plier/colonne"},
-		{"↵/esp", "agir"}, {"e", "modifier"}, {"⌫", "supprimer"},
-		{"u", "terminés"}, {"c", "tout plier"}, {"n/s/a", "ajouter"}, {"q", "quitter"},
+		{"tab", "panel"}, {"↑↓", "navigate"}, {"←→", "fold/column"},
+		{"↵/esp", "act"}, {"e", "edit"}, {"⌫", "delete"},
+		{"u", "completed"}, {"c", "fold all"}, {"n/s/a", "add"}, {"q", "quit"},
 	}
 	const desiredCellWidth = 25
 	columns := max(1, width/desiredCellWidth)

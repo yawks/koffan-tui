@@ -96,7 +96,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) updateLists(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch key.String() {
+	switch keyName(key) {
 	case "tab", "right", "l":
 		if len(m.lists) > 0 {
 			m.focus = focusContent
@@ -132,7 +132,7 @@ func (m model) updateLists(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 func (m model) updateContent(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	s := m.selectedSection()
-	switch key.String() {
+	switch keyName(key) {
 	case "tab", "shift+tab":
 		m.focus = focusLists
 	case "left", "h":
@@ -207,6 +207,13 @@ func (m model) updateContent(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	m.clampCursor()
 	m.ensureContentCursorVisible()
 	return m, nil
+}
+
+func keyName(key tea.KeyPressMsg) string {
+	if key.Key().Code == tea.KeyBackspace || key.Key().Code == tea.KeyDelete {
+		return "delete"
+	}
+	return key.String()
 }
 
 func (m *model) toggleAllSections() {
