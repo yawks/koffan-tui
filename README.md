@@ -1,34 +1,34 @@
 # koffan-tui
 
-Interface terminal pour l'[API REST de Koffan](https://github.com/PanSalut/Koffan/wiki/REST-API).
+Terminal interface for the [Koffan REST API](https://github.com/PanSalut/Koffan/wiki/REST-API).
 
-## Lancer
+## Run
 
 ```sh
 go run .
 ```
 
-Au premier lancement, l'application crée `koffan-tui/config.json` dans le dossier de configuration utilisateur. Renseignez ensuite le token :
+On first launch, the application creates `koffan-tui/config.json` in the user configuration directory. Then add your token:
 
 ```json
 {
   "base_url": "http://localhost:3000",
-  "token": "votre-token"
+  "token": "your-token"
 }
 ```
 
-Le fichier est créé avec des permissions `0600`.
+The file is created with `0600` permissions.
 
-## Raccourcis
+## Keyboard shortcuts
 
-- `Tab`, `←`, `→`, `↑`, `↓` : navigation
-- `←` / `→` sur une section : replier/déplier
-- `Entrée` : ouvrir une liste ou déplier une section
-- `Espace` ou `Entrée` : terminer/réouvrir un article
-- `e` : modifier la liste, la section ou l'article sélectionné
-- `n`, `s`, `a` : ajouter une liste, une section ou un article
-- `Retour arrière` ou `Suppr` : supprimer après confirmation
-- `r` : rafraîchir
-- `u` : masquer/afficher la colonne des articles terminés
-- `c` : replier/déplier toutes les sections
-- `q` : quitter
+- `Tab`, `←`, `→`, `↑`, `↓`: navigate
+- `←` / `→` on a section: collapse/expand
+- `Enter`: open a list or expand a section
+- `Space` or `Enter`: complete/reopen an item
+- `e`: edit the selected list, section, or item
+- `n`, `s`, `a`: add a list, section, or item
+- `Backspace` or `Delete`: delete after confirmation
+- `r`: refresh
+- `u`: hide/show the completed items column
+- `c`: collapse/expand all sections
+- `q`: quit
