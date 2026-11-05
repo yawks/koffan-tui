@@ -1,10 +1,60 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 )
+
+func TestHideCompletedCollapsesSectionsWithoutOpenItems(t *testing.T) {
+	m := model{
+		sections: []Section{
+			{ID: 1, Items: []Item{{ID: 1, Completed: true}}},
+			{ID: 2},
+			{ID: 3, Items: []Item{{ID: 2}, {ID: 3, Completed: true}}},
+			{ID: 4, Items: []Item{{ID: 4}}},
+		},
+		expanded:      map[int]bool{1: true, 2: true, 3: true, 4: false},
+		focus:         focusContent,
+		row:           0,
+		column:        1,
+		showCompleted: true,
+	}
+	key := tea.KeyPressMsg{Code: 'u', Text: "u"}
+
+	updated, _ := m.updateContent(key)
+	got := updated.(model)
+	if got.showCompleted || got.column != 0 || got.row != -1 {
+		t.Fatalf("état inattendu: showCompleted=%v column=%d row=%d", got.showCompleted, got.column, got.row)
+	}
+	if got.expanded[1] || got.expanded[2] || !got.expanded[3] || got.expanded[4] {
+		t.Fatalf("état des sections inattendu: %#v", got.expanded)
+	}
+	if lines := got.renderSection(0); len(lines) != 1 {
+		t.Fatalf("la section achetée doit être repliée: %#v", lines)
+	}
+
+	updated, _ = got.updateContent(key)
+	got = updated.(model)
+	if !got.showCompleted || !got.expanded[3] || got.expanded[4] {
+		t.Fatalf("état inattendu après réaffichage: showCompleted=%v expanded=%#v", got.showCompleted, got.expanded)
+	}
+}
+
+func TestCompletedHelpLabelTracksVisibility(t *testing.T) {
+	for _, visible := range []bool{false, true} {
+		m := model{showCompleted: visible}
+		want, unwanted := "show bought", "hide bought"
+		if visible {
+			want, unwanted = unwanted, want
+		}
+		help := m.renderHelp(80)
+		if !strings.Contains(help, want) || strings.Contains(help, unwanted) {
+			t.Fatalf("aide incorrecte pour showCompleted=%v: %s", visible, help)
+		}
+	}
+}
 
 func TestBackspaceDeletesCompletedItem(t *testing.T) {
 	m := model{
@@ -118,6 +168,39 @@ func TestToggleAllSections(t *testing.T) {
 	m.toggleAllSections()
 	if m.expanded[1] || m.expanded[2] {
 		t.Fatalf("toutes les sections auraient dû être repliées: %#v", m.expanded)
+	}
+}
+
+func TestFoldHelpLabelTracksSectionState(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		sections []Section
+		expanded map[int]bool
+	}{
+		{name: "empty"},
+		{name: "collapsed", sections: []Section{{ID: 1}, {ID: 2}}, expanded: make(map[int]bool)},
+		{name: "mixed", sections: []Section{{ID: 1}, {ID: 2}}, expanded: map[int]bool{1: true}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			m := model{sections: tt.sections, expanded: tt.expanded}
+			if help := m.renderHelp(80); !strings.Contains(help, "unfold all") {
+				t.Fatalf("libellé unfold all attendu: %s", help)
+			}
+			if len(tt.sections) == 0 {
+				return
+			}
+			key := tea.KeyPressMsg{Code: 'c', Text: "c"}
+			updated, _ := m.updateContent(key)
+			m = updated.(model)
+			if help := m.renderHelp(80); !strings.Contains(help, "fold all") || strings.Contains(help, "unfold all") {
+				t.Fatalf("libellé fold all attendu: %s", help)
+			}
+			updated, _ = m.updateContent(key)
+			m = updated.(model)
+			if help := m.renderHelp(80); !strings.Contains(help, "unfold all") {
+				t.Fatalf("libellé unfold all attendu après repli: %s", help)
+			}
+		})
 	}
 }
 

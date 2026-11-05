@@ -27,7 +27,7 @@ func (m model) View() tea.View {
 	width, height = max(width, 50), max(height, 10)
 	leftWidth := min(40, width*2/5)
 	rightWidth := width - leftWidth - 1
-	footer := renderHelp(width)
+	footer := m.renderHelp(width)
 	panelHeight := max(3, height-lipgloss.Height(footer))
 
 	left := panelStyle.Width(leftWidth - 4).Height(panelHeight).MaxHeight(panelHeight).Render(m.renderLists())
@@ -58,7 +58,7 @@ func (m model) screenSize() (width, height int) {
 
 func (m model) contentViewportHeight() int {
 	width, height := m.screenSize()
-	return max(3, height-lipgloss.Height(renderHelp(width))-7)
+	return max(3, height-lipgloss.Height(m.renderHelp(width))-7)
 }
 
 func (m model) renderLists() string {
@@ -287,11 +287,19 @@ func helpKey(key, label string) string {
 	return keyStyle.Width(9).Align(lipgloss.Center).Render(key) + " " + lipgloss.NewStyle().Foreground(muted).Render(label)
 }
 
-func renderHelp(width int) string {
+func (m model) renderHelp(width int) string {
+	completedAction := "show bought"
+	if m.showCompleted {
+		completedAction = "hide bought"
+	}
+	foldAction := "unfold all"
+	if m.allSectionsExpanded() {
+		foldAction = "fold all"
+	}
 	entries := [][2]string{
 		{"tab", "panel"}, {"↑↓", "navigate"}, {"←→", "fold/column"},
 		{"↵/esp", "act"}, {"e", "edit"}, {"⌫", "delete"},
-		{"u", "completed"}, {"c", "fold all"}, {"n/s/a", "add"}, {"q", "quit"},
+		{"u", completedAction}, {"c", foldAction}, {"n/s/a", "add"}, {"q", "quit"},
 	}
 	const desiredCellWidth = 25
 	columns := max(1, width/desiredCellWidth)

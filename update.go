@@ -200,6 +200,11 @@ func (m model) updateContent(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.showCompleted = !m.showCompleted
 		if !m.showCompleted {
 			m.column = 0
+			for _, section := range m.sections {
+				if len(splitLeft(section)) == 0 {
+					m.expanded[section.ID] = false
+				}
+			}
 		}
 	case "c":
 		m.toggleAllSections()
@@ -217,17 +222,20 @@ func keyName(key tea.KeyPressMsg) string {
 }
 
 func (m *model) toggleAllSections() {
-	expand := false
-	for _, section := range m.sections {
-		if !m.expanded[section.ID] {
-			expand = true
-			break
-		}
-	}
+	expand := !m.allSectionsExpanded()
 	for _, section := range m.sections {
 		m.expanded[section.ID] = expand
 	}
 	m.row = -1
+}
+
+func (m model) allSectionsExpanded() bool {
+	for _, section := range m.sections {
+		if !m.expanded[section.ID] {
+			return false
+		}
+	}
+	return len(m.sections) > 0
 }
 
 func (m *model) moveDown() {
