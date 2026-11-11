@@ -49,25 +49,25 @@ type confirmation struct {
 }
 
 type model struct {
-	api           *client
-	lists         []List
-	listCursor    int
-	activeList    int
-	sections      []Section
-	section       int
-	row           int // -1: section header, len(rows): add button
-	column        int
-	showCompleted bool
-	expanded      map[int]bool
-	focus         focusArea
-	form          *itemForm
-	confirm       *confirmation
-	loading       bool
-	err           error
-	width         int
-	height        int
-	contentScroll int
-	pendingItem   int
+	api            *client
+	lists          []List
+	listCursor     int
+	activeList     int
+	sections       []Section
+	section        int
+	row            int // -1: section header, len(rows): add button
+	column         int
+	showCompleted  bool
+	expanded       map[int]bool
+	focus          focusArea
+	form           *itemForm
+	confirm        *confirmation
+	loading        bool
+	err            error
+	width          int
+	height         int
+	contentScroll  int
+	pendingToggles map[int]bool
 }
 
 func (m model) contentCursorLine() (line, total int) {
@@ -122,6 +122,13 @@ type sectionsMsg struct {
 type actionMsg struct {
 	kind string
 	err  error
+}
+
+type toggleMsg struct {
+	listID    int
+	itemID    int
+	completed bool
+	err       error
 }
 
 func (m model) loadLists() tea.Cmd {

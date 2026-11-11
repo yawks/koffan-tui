@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -73,22 +76,94 @@ func TestBackspaceDeletesCompletedItem(t *testing.T) {
 	}
 }
 
-func TestFollowItemAfterCompletedColumnChange(t *testing.T) {
-	m := model{
-		sections: []Section{{
-			ID: 10,
-			Items: []Item{
-				{ID: 1, Name: "Apples", Completed: false},
-				{ID: 2, Name: "Bananas", Completed: true},
-			},
-		}},
-		expanded: make(map[int]bool),
+func TestToggleKeepsCursorInOriginalColumn(t *testing.T) {
+	for _, completed := range []bool{false, true} {
+		for _, row := range []int{0, 1, 2} {
+			for _, count := range []int{1, 3} {
+				if row >= count {
+					continue
+				}
+				t.Run(fmt.Sprintf("completed=%v/row=%d/count=%d", completed, row, count), func(t *testing.T) {
+					m := model{
+						lists:    []List{{ID: 1}},
+						sections: []Section{{ID: 10}},
+						expanded: map[int]bool{10: true}, focus: focusContent,
+						row: row, showCompleted: true,
+					}
+					if completed {
+						m.column = 1
+						m.lists[0].Stats.Completed = count
+					}
+					for i := 0; i < count; i++ {
+						m.sections[0].Items = append(m.sections[0].Items, Item{ID: i + 1, Completed: completed, Order: i})
+					}
+					updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+					got := updated.(model)
+					wantRow := min(row, count-2)
+					if got.column != m.column || got.row != wantRow || got.loading || cmd == nil {
+						t.Fatalf("état inattendu: column=%d row=%d loading=%v", got.column, got.row, got.loading)
+					}
+					if got.sections[0].Items[row].Completed == completed {
+						t.Fatal("le toggle doit être appliqué avant la réponse API")
+					}
+					updated, cmd = got.Update(toggleMsg{listID: 1, itemID: row + 1, completed: !completed})
+					got = updated.(model)
+					if cmd != nil || got.row != wantRow || got.column != m.column || len(got.pendingToggles) != 0 {
+						t.Fatal("la réponse API ne doit ni recharger ni déplacer le curseur")
+					}
+				})
+			}
+		}
 	}
+}
 
-	m.followItem(2)
-
-	if m.section != 0 || m.row != 0 || m.column != 1 || !m.expanded[10] {
-		t.Fatalf("curseur inattendu: section=%d row=%d column=%d expanded=%v", m.section, m.row, m.column, m.expanded[10])
+func TestOptimisticToggleAPIResult(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprintf("failure=%v", fail), func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				if r.Method != http.MethodPost || r.URL.Path != "/items/1/toggle" {
+					t.Errorf("requête inattendue: %s %s", r.Method, r.URL.Path)
+				}
+				if fail {
+					http.Error(w, "toggle failed", http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer server.Close()
+			m := model{
+				api:      &client{baseURL: server.URL, http: server.Client()},
+				lists:    []List{{ID: 1}},
+				sections: []Section{{ID: 10, Items: []Item{{ID: 1}, {ID: 2}}}},
+				expanded: map[int]bool{10: true}, focus: focusContent, row: 0, showCompleted: true,
+			}
+			updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+			got := updated.(model)
+			if got.lists[0].Stats.Completed != 1 {
+				t.Fatal("compteur optimiste non mis à jour")
+			}
+			// Navigation remains available while the request is in flight.
+			updated, _ = got.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+			got = updated.(model)
+			row := got.row
+			updated, next := got.Update(cmd())
+			got = updated.(model)
+			if next != nil || requests != 1 || got.loading || got.row != row {
+				t.Fatal("le toggle doit effectuer une seule requête sans bloquer ni déplacer le curseur")
+			}
+			if got.sections[0].Items[0].Completed == fail || (got.err != nil) != fail {
+				t.Fatalf("résultat du toggle incorrect: completed=%v err=%v", got.sections[0].Items[0].Completed, got.err)
+			}
+			wantCompleted := 1
+			if fail {
+				wantCompleted = 0
+			}
+			if got.lists[0].Stats.Completed != wantCompleted {
+				t.Fatalf("compteur incorrect: %d", got.lists[0].Stats.Completed)
+			}
+		})
 	}
 }
 
@@ -98,6 +173,41 @@ func TestScrollLinesKeepsSelectedButtonVisible(t *testing.T) {
 
 	if got := visible[len(visible)-1]; got != "add" {
 		t.Fatalf("dernière ligne visible = %q, attendu add", got)
+	}
+}
+
+func TestPendingTogglesAllowOtherItemsButPreventDuplicateRequests(t *testing.T) {
+	m := model{
+		lists:    []List{{ID: 1}},
+		sections: []Section{{ID: 10, Items: []Item{{ID: 1}, {ID: 2}}}},
+		expanded: map[int]bool{10: true}, focus: focusContent, row: 0, showCompleted: true,
+	}
+	space := tea.KeyPressMsg{Code: tea.KeySpace}
+	updated, _ := m.Update(space)
+	m = updated.(model)
+	updated, cmd := m.Update(space)
+	m = updated.(model)
+	if cmd == nil || len(m.pendingToggles) != 2 || m.lists[0].Stats.Completed != 2 || m.row != -1 {
+		t.Fatal("les articles suivants doivent pouvoir être cochés sans attendre")
+	}
+	m.column, m.row = 1, 0
+	updated, cmd = m.Update(space)
+	m = updated.(model)
+	if cmd != nil || !m.sections[0].Items[0].Completed {
+		t.Fatal("un article déjà en cours de toggle ne doit pas envoyer une seconde requête")
+	}
+}
+
+func TestToggleWithCompletedItemsHidden(t *testing.T) {
+	m := model{
+		lists:    []List{{ID: 1}},
+		sections: []Section{{ID: 10, Items: []Item{{ID: 1}}}},
+		expanded: map[int]bool{10: true}, focus: focusContent, row: 0,
+	}
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	got := updated.(model)
+	if got.column != 0 || got.row != -1 || got.showCompleted || !got.expanded[10] {
+		t.Fatal("le curseur doit rester sur la section d'origine sans afficher les articles achetés")
 	}
 }
 

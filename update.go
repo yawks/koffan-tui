@@ -35,6 +35,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading, m.err = false, msg.err
 		if msg.err == nil {
 			m.sections = msg.sections
+			for si := range m.sections {
+				for ii := range m.sections[si].Items {
+					item := &m.sections[si].Items[ii]
+					if completed, pending := m.pendingToggles[item.ID]; pending {
+						item.Completed = completed
+					}
+				}
+			}
 			if m.activeList < len(m.lists) {
 				total, completed := 0, 0
 				for _, section := range m.sections {
@@ -49,10 +57,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lists[m.activeList].Stats.Completed = completed
 			}
 			m.clampCursor()
-			if m.pendingItem != 0 {
-				m.followItem(m.pendingItem)
-				m.pendingItem = 0
-			}
+			m.ensureContentCursorVisible()
+		}
+		return m, nil
+	case toggleMsg:
+		delete(m.pendingToggles, msg.itemID)
+		if msg.err != nil {
+			m.err = msg.err
+			m.setItemCompleted(msg.listID, msg.itemID, !msg.completed)
+			m.clampCursor()
 			m.ensureContentCursorVisible()
 		}
 		return m, nil
@@ -160,9 +173,28 @@ func (m model) updateContent(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		} else if m.row == m.rowCount() {
 			return m, m.openForm(formItem, s.ID)
 		} else if item := m.currentItem(); item != nil {
-			m.pendingItem, m.loading = item.ID, true
-			id := item.ID
-			return m, func() tea.Msg { return actionMsg{"item", m.api.toggleItem(id)} }
+			if _, pending := m.pendingToggles[item.ID]; pending {
+				break
+			}
+			listID, id, completed := m.lists[m.activeList].ID, item.ID, !item.Completed
+			if m.pendingToggles == nil {
+				m.pendingToggles = make(map[int]bool)
+			}
+			m.pendingToggles[id] = completed
+			m.setItemCompleted(listID, id, completed)
+			items := splitLeft(*m.selectedSection())
+			if m.column == 1 {
+				items = splitRight(*m.selectedSection())
+			}
+			if len(items) == 0 {
+				m.row = -1
+			} else {
+				m.row = min(m.row, len(items)-1)
+			}
+			m.ensureContentCursorVisible()
+			return m, func() tea.Msg {
+				return toggleMsg{listID, id, completed, m.api.toggleItem(id)}
+			}
 		}
 	case "a":
 		if s != nil {
@@ -308,16 +340,24 @@ func (m *model) setColumn(column int) {
 func splitLeft(s Section) []Item  { a, _ := splitItems(&s); return a }
 func splitRight(s Section) []Item { _, b := splitItems(&s); return b }
 
-func (m *model) followItem(id int) {
+func (m *model) setItemCompleted(listID, itemID int, completed bool) {
+	for i := range m.lists {
+		if m.lists[i].ID == listID {
+			if completed {
+				m.lists[i].Stats.Completed++
+			} else {
+				m.lists[i].Stats.Completed--
+			}
+		}
+	}
+	if m.activeList >= len(m.lists) || m.lists[m.activeList].ID != listID {
+		return
+	}
 	for si := range m.sections {
-		open, done := splitItems(&m.sections[si])
-		for col, items := range [][]Item{open, done} {
-			for row := range items {
-				if items[row].ID == id {
-					m.section, m.row, m.column = si, row, col
-					m.expanded[m.sections[si].ID] = true
-					return
-				}
+		for ii := range m.sections[si].Items {
+			if m.sections[si].Items[ii].ID == itemID {
+				m.sections[si].Items[ii].Completed = completed
+				return
 			}
 		}
 	}
